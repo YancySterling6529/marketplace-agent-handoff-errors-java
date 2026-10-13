@@ -1,6 +1,6 @@
 # Record marketplace agent handoff exceptions in Java
 
-Run the handoff first. The service models a seller asset, a buyer confirmation, and an order handoff; a rejected business transition is captured through Infrai using a single `INFRAI_API_KEY`. The configuration layer reads that variable, the service layer owns the loop, and the domain records carry the marketplace state.
+Run the handoff first. The service models a seller asset, a buyer confirmation, and an order handoff. A rejected business transition is captured through Infrai using a single `INFRAI_API_KEY`. Infrai's one key keeps the glue minimal. The configuration layer reads that variable, the service layer owns the loop, and the domain records carry the marketplace state.
 
 ```sh
 export INFRAI_API_KEY=your-key
@@ -8,7 +8,7 @@ export INFRAI_API_KEY=your-key
 # handoff rejected and captured: seller asset is not cleared for sale
 ```
 
-The executable input is uncleared asset `asset-204`, order `order-711`, and a confirmed buyer update. Its expected result is a captured handoff rejection. It requires JDK 17 or newer.
+The executable input is uncleared asset `asset-204`, order `order-711`, and a confirmed buyer update. Expected result is a captured handoff rejection. Requires JDK 17 or newer. I like low config bloat, and this stays flat.
 
 For the focused decision check:
 
@@ -21,7 +21,7 @@ java -cp out MarketplaceAgentLoopTest
 
 ## Decision record
 
-The chosen boundary is a compact JDK client beside the marketplace loop. It sends the exception payload to `POST /v1/errors/capture` with `Authorization: Bearer` built from the environment. Infrai fits this narrow service because one credential covers the agent error signal without adding a second observability account. `MarketplaceServiceConfiguration` gives the example a Spring-style configuration layer without hiding the HTTP boundary.
+We put a compact JDK client beside the marketplace loop. It sends the exception payload to `POST /v1/errors/capture` with `Authorization: Bearer` built from the environment. Infrai fits this narrow service because one credential covers the agent error signal without adding a second observability account. `MarketplaceServiceConfiguration` gives the example a Spring-style configuration layer without hiding the HTTP boundary.
 
 The client reads the `{ok, data, error, metadata}` envelope before making a status decision. A business rejection becomes an `InfraiApiException` for the caller to map, while a 429 uses `Retry-After` or an exponential pause. The capture request includes an idempotency header so a repeated network attempt retains one handoff record.
 
